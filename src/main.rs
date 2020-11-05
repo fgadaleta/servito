@@ -8,7 +8,8 @@ use ndarray::Array;
 use tracing::Level;
 use std::*;
 use tracing_subscriber::FmtSubscriber;
-
+use actix_web::http::{header, Method, StatusCode};
+use actix_web::{get, post, web, App, HttpServer, Responder, HttpResponse, HttpRequest};
 type Error = Box<dyn std::error::Error>;
 
 
@@ -123,8 +124,13 @@ fn run() -> Result<(), Error> {
     Ok(())
 }
 
+#[get("/status")]
+async fn index() -> impl Responder {
+    format!("Status ok!")
+}
 
-fn main() {
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
     println!("Loading model and preparing runtime... ");
 
     if let Err(e) = run() {
@@ -132,5 +138,21 @@ fn main() {
         std::process::exit(1);
     }
 
-    println!("Goodbye!")
+    println!("Launching web server");
+
+    HttpServer::new(||
+        App::new()
+        .service(index)
+        .service(
+            web::resource("/predict").to(|req: HttpRequest| match *req.method() {
+                Method::GET => HttpResponse::MethodNotAllowed(),
+                Method::POST => HttpResponse::Ok(),
+                _ => HttpResponse::NotFound(),
+            }),
+        )
+    )
+    .bind("127.0.0.1:6666")?
+    .run()
+    .await
+
 }

@@ -1,19 +1,20 @@
 [package]
-edition = "2018"
-name = "servito"
-version = "0.1.0"
+authors = ["Francesco Gadaleta <francesco@amethix.com>"]
 description = "Serve your model"
+edition = "2018"
 keywords = ["model", "server", "machinelearning"]
 license = "Apache-2.0/MIT"
+name = "servito"
 repository = "https://github.com/fgadaleta/servito"
-authors = ["Francesco Gadaleta <francesco@amethix.com>"]
-
-
+version = "0.1.0"
 [dependencies]
+actix-web = "3"
+json = "*"
 lazy_static = "1.4"
 ndarray = "0.13"
 onnxruntime = "0.0.10"
 onnxruntime-sys = "0.0.10"
+serde = "*"
 thiserror = "1.0"
 toml = "0.5.7"
 tracing = "0.1"
