@@ -1,8 +1,14 @@
 [package]
-authors = ["francesco <francesco@amethix.com>"]
 edition = "2018"
 name = "servito"
 version = "0.1.0"
+description = "Serve your model"
+keywords = ["model", "server", "machinelearning"]
+license = "Apache-2.0/MIT"
+repository = "https://github.com/fgadaleta/servito"
+authors = ["Francesco Gadaleta <francesco@amethix.com>"]
+
+
 [dependencies]
 lazy_static = "1.4"
 ndarray = "0.13"
