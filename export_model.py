@@ -35,7 +35,6 @@ class SuperResolutionNet(nn.Module):
 # Create the super-resolution model by using the above model definition.
 torch_model = SuperResolutionNet(upscale_factor=3)
 
-
 # Load pretrained model weights
 model_url = 'https://s3.amazonaws.com/pytorch/test_data/export/superres_epoch100-44c6958e.pth'
 batch_size = 1    # just a random number
@@ -56,7 +55,7 @@ torch_out = torch_model(x)
 # Export the model
 torch.onnx.export(torch_model,               # model being run
                   x,                         # model input (or a tuple for multiple inputs)
-                  "super_resolution.onnx",   # where to save the model (can be a file or file-like object)
+                  "model.onnx",   # where to save the model (can be a file or file-like object)
                   export_params=True,        # store the trained parameter weights inside the model file
                   opset_version=10,          # the ONNX version to export the model to
                   do_constant_folding=True,  # whether to execute constant folding for optimization

@@ -13,7 +13,7 @@ type Error = Box<dyn std::error::Error>;
 
 
 fn load_model() -> TractResult<()> {
-    let model_filename = "super_resolution.onnx";
+    let model_filename = "simple_model.onnx";
 
     let model = tract_onnx::onnx()
     // load the model
@@ -38,7 +38,7 @@ fn run() -> Result<(), Error> {
     let environment = Environment::builder()
     .with_name("test_environment")
     // The ONNX Runtime's log level can be different than the one of the wrapper crate or the application.
-    .with_log_level(LoggingLevel::Warning)
+    .with_log_level(LoggingLevel::Info)
     .build()?;
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
@@ -47,11 +47,7 @@ fn run() -> Result<(), Error> {
         .new_session_builder()?
         .with_optimization_level(GraphOptimizationLevel::Basic)?
         .with_number_threads(1)?
-        // NOTE: The example uses SqueezeNet 1.0 (ONNX version: 1.3, Opset version: 8),
-        //       _not_ SqueezeNet 1.1 as downloaded by '.with_model_downloaded(ImageClassification::SqueezeNet)'
-        //       Obtain it with:
-        //          curl -LO "https://github.com/onnx/models/raw/master/vision/classification/squeezenet/model/squeezenet1.0-8.onnx"
-        .with_model_from_file("super_resolution.onnx")?;
+        .with_model_from_file("simple_model.onnx")?;
 
         dbg!(&session);
         // let inputs = &session.inputs;
@@ -77,21 +73,20 @@ fn run() -> Result<(), Error> {
             .map(|d| {
                 let curdim = match d {
                     Some(dim) => dim,
-                    None => 0
+                    None => 1
                 };
                 curdim
-                // d.unwrap()
             })
             .collect();
 
         println!("input_0: {:?}", input0_shape);
 
-        let output0_shape: Vec<usize> = session.outputs[0]
+        let mut output0_shape: Vec<usize> = session.outputs[0]
             .dimensions()
             .map(|d| {
                 let curdim = match d {
                     Some(dim) => dim,
-                    None => 0
+                    None => 1
                 };
                 curdim
                 // d.unwrap()
@@ -104,23 +99,22 @@ fn run() -> Result<(), Error> {
         // assert_eq!(output0_shape, [1, 1000, 1, 1]);
 
         // total input dimensions
-        let mut nonzero_input: Vec<usize> = input0_shape.clone()
-        .into_iter()
-        .filter(|&i| i > 0)
-        .collect();
-
         let mut n = 1;
-        for el in nonzero_input.iter_mut() {
+        for el in input0_shape.iter_mut() {
             n *= *el;
         }
         dbg!("total input dims: {}", n);
 
         let array = Array::linspace(0.0_f32, 1.0, n as usize)
-        .into_shape(nonzero_input)
+        .into_shape(input0_shape)
         .unwrap();
+        // println!("input array: {:?}", array);
+
         let input_tensor_values = vec![array];
-        // println!("{:?}", input_tensor_values);
+        println!("input_tensor_values: {:?}", input_tensor_values);
+
         let predictions: Vec<OrtOwnedTensor<f32, _>> = session.run(input_tensor_values).unwrap();
+        println!("predictions: {:?}", predictions);
 
         // let outputs: Vec<OrtOwnedTensor<f32, _>> = session.run(input_tensor_values)?;
         // dbg!("output: {} len: {}", &outputs, &outputs.len());
@@ -131,16 +125,12 @@ fn run() -> Result<(), Error> {
 
 
 fn main() {
-    println!("Loading model ");
+    println!("Loading model and preparing runtime... ");
 
     if let Err(e) = run() {
         println!("Encountered an error {}. Exiting...", e);
         std::process::exit(1);
     }
 
-    // let model = load_model();
-    // dbg!(model);
-
-
-
+    println!("Goodbye!")
 }
