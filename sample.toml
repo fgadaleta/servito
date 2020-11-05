@@ -1,0 +1,12 @@
+[model]
+path = "./super_resolution.onnx"
+type = "onnx"
+input_dims = "1,224,224"
+output_dims = "1,672,672"
+
+[api]
+host = "localhost"
+port = "6666"
+serving_endpoint = "/model/"
+predict_endpoint = "/predict"
+train_endpoint = "/train"
