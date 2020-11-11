@@ -41,11 +41,28 @@ use crate::configuration::get_configuration_from_file;
 //     Ok(HttpResponse::Ok().json(obj)) // <- send response
 // }
 
+// pub async fn predict_helper(payload: web::Bytes) -> Result<HttpResponse, Error> {
+//     // payload is a stream of Bytes objects
+//     // let mut body = web::BytesMut::new();
+//     let body = std::str::from_utf8(&payload).unwrap();
+//     // println!("payload: {:?}", body);
+//     let obj = serde_json::from_slice::<Payload>(body.as_bytes())?;
+//     // println!("obj: {:?}", obj.input);
+//     let input_vector: Vec<f64> = obj.input
+//     .split(",")
+//     .map(|s| s.parse().expect("parse error"))
+//     .collect();
+//     println!("input_vector: {:?}", input_vector);
+//     // TODO deserialize body into a vector of floats
+//     // body is loaded, now we can deserialize serde-json
+//     Ok(HttpResponse::Ok().json(obj)) // <- send response
+// }
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let config = get_configuration_from_file("sample.toml").unwrap();
-    let _model_format = config.model.format;
+    let model_format = config.model.format;
     let model_path = config.model.path;
     let host = config.api.host;
     let port = config.api.port;
@@ -58,43 +75,42 @@ async fn main() -> std::io::Result<()> {
 
     // TODO
     // check model_format is "onnx"
-
+    //
     // TODO move this into endpoint
     // if let Err(e) = run(model_path.clone()) {
     //     println!("Encountered an error {}. Exiting...", e);
     //     std::process::exit(1);
     // }
 
-    let onnx_session = OnnxSession::new(model_path.clone()).unwrap();
-    let input_sample: Array1<f32> = Array1::from(vec![1.,2.,3.]);
-    let preds = onnx_session.run();
-    println!("preds: {:?}", preds);
-
-    // let _ = onnx_session.predict(input_sample);
-    // let onnx_session = create_onnx_session(model_path);
-    // onnx_inference(onnx_session, input_sample);
-    // let _ = run(model_path.clone());
-
-
+    let onnx_session = Arc::new(OnnxSession::new(model_path.clone()).unwrap());
+    // let input_sample: Array1<f32> = Array1::from(vec![1.,2.,3.]);
+    // let preds = onnx_session.run();
+    // println!("preds: {:?}", preds);
 
     println!("Launching web server");
 
-    HttpServer::new(move ||
+    HttpServer::new(move | | {
+        // { let onnx_session = onnx_session.clone(); }
+        let onnx_session = onnx_session.clone();
+
         App::new()
         .service(status)
-        // .service(
-        //     web::resource("/predict").to(|req: HttpRequest| match *req.method() {
-        //         Method::GET => HttpResponse::MethodNotAllowed(),
-        //         Method::POST => HttpResponse::Ok(),
-        //         _ => HttpResponse::NotFound(),
-        //     }),
-        // )
         .service(
-            web::resource(format!("{}", predict_endpoint.clone()))
-            .route(web::post()
-            .to(predict)))
-
-    )
+            web::resource("/predict").to(move |req: HttpRequest| match *req.method() {
+                Method::GET => HttpResponse::MethodNotAllowed(),
+                Method::POST => {
+                    // let onnx_session = onnx_session.clone();
+                    let preds = onnx_session.run();
+                    println!("preds: {:?}", preds);
+                    HttpResponse::Ok()
+                },
+                _ => HttpResponse::NotFound(),
+            }),
+        )
+        // .service(
+        // web::resource(format!("{}", predict_endpoint.clone()))
+        //         .route(web::post().to(predict)))
+    })
     .bind(format!("{}:{}", host, port))?
     .run()
     .await
