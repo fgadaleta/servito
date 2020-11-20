@@ -132,7 +132,7 @@ async fn main() -> std::io::Result<()> {
     let port = config.api.port;
     // let predict_endpoint = config.api.predict_endpoint;
     // let base_endpoint = config.api.base_endpoint;
-    // let input_dims = config.model.input_dims;
+    let input_dims = config.model.input_dims;
     // let output_dims = config.model.output_dims;
 
     std::env::set_var("RUST_LOG", "actix_web=info");
@@ -142,17 +142,14 @@ async fn main() -> std::io::Result<()> {
 
     // TODO
     // check model_format is "onnx"
-    //
-    // TODO move this into endpoint
-    // if let Err(e) = run(model_path.clone()) {
-    //     println!("Encountered an error {}. Exiting...", e);
-    //     std::process::exit(1);
-    // }
 
     // let runtime_session = Arc::new(RuntimeSession);
 
-    // if model_format == "onnx" {
-    // TODO encapsulate into a RuntimeSession struct with type (Arc:new(..))
+    if model_format == "onnx" {
+
+    }
+
+        // TODO encapsulate into a RuntimeSession struct with type (Arc:new(..))
     let onnx_session = Arc::new(OnnxSession::new(model_path.clone()).unwrap());
     // }
 
@@ -162,8 +159,9 @@ async fn main() -> std::io::Result<()> {
         let onnx_session = onnx_session.clone();
 
         App::new()
+        .data(web::JsonConfig::default().limit(4096)) // <- limit size of the payload (global configuration)
         .service(status)
-        .service(web::resource("/predict2").route(web::post().to(index)))
+        // .service(web::resource("/predict2").route(web::post().to(index)))
         .service(
             web::resource("/predict").to(move |payload: web::Json<Payload>, req: HttpRequest |
                 match *req.method() {
@@ -184,59 +182,39 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 
-    /*
-    // kinda working
-    HttpServer::new(move | | {
-        dbg!("i am here");
-        let onnx_session = onnx_session.clone();
+}
 
-        App::new()
-        .service(status)
 
-        .service(
-            web::resource("/predict")
-            .data(web::JsonConfig::default().limit(1024))
-            .to(move |item: web::Json<Info>, req: HttpRequest |
-                {
-                    println!("and now i am here");
 
-                match *req.method() {
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::dev::Service;
+    use actix_web::{http, test, web, App};
 
-                    Method::GET => HttpResponse::MethodNotAllowed(),
-
-                    Method::POST => {
-                        // TODO get input data from payload
-                        println!("hello i am here");
-
-                        dbg!("req: ", &req);
-                        dbg!("item: {:?}", &item);
-
-                        let headers = req.headers();
-                        dbg!("headers: ", headers);
-                        // let input_sample: Array1<f32> = Array1::from(vec![1.,2.,3.]);
-                        let preds = onnx_session.run();
-
-                        println!("preds: {:?}", preds);
-                        HttpResponse::Ok()
-                    },
-
-                    _ => HttpResponse::NotFound(),
-                }
-                }
-            ),
+    async fn test_index() -> Result<(), Error> {
+        let mut app = test::init_service(
+            App::new().service(web::resource("/").route(web::post().to(index))),
         )
+        .await;
 
-        .service(
-            web::resource("/predict2")
-                .data(web::JsonConfig::default().limit(1024)) // <- limit size of the payload (resource level)
-                .route(web::post()
-                .to(extract_item)),
-        )
+        let req = test::TestRequest::post()
+            .uri("/")
+            .set_json(&Payload {
+                input: vec![43.0,1.0,2.0,3.0],
+            })
+            .to_request();
+        let resp = app.call(req).await.unwrap();
 
-    })
-    .bind(format!("{}:{}", host, port))?
-    .run()
-    .await
-    */
+        assert_eq!(resp.status(), http::StatusCode::OK);
 
+        let response_body = match resp.response().body().as_ref() {
+            Some(actix_web::body::Body::Bytes(bytes)) => bytes,
+            _ => panic!("Response error"),
+        };
+
+        assert_eq!(response_body, r##"{"name":"my-name","number":43}"##);
+
+        Ok(())
+    }
 }

@@ -1,8 +1,8 @@
 [model]
 path = "./simple_model.onnx"
 format = "onnx"
-input_dims = "1,224,224"
-output_dims = "1,672,672"
+input_dims = [1,224,224]
+output_dims = [1,672,672]
 
 [data]
 input_type = ""

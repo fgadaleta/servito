@@ -27,8 +27,8 @@ pub struct Api {
 pub struct Model {
     pub path: String,
     pub format: String,
-    pub input_dims: String,
-    pub output_dims: String
+    pub input_dims: Vec<u16>,
+    pub output_dims: Vec<u16>
 }
 
 #[derive(Deserialize, Debug)]
