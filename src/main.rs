@@ -38,9 +38,13 @@ struct Payload {
 
 
 /// This handler uses json extractor
-async fn index(item: web::Json<Payload>) -> HttpResponse {
-    println!("model: {:?}", &item);
-    HttpResponse::Ok().json(item.input.clone()) // <- send response
+async fn handler_train(item: web::Json<Payload>) -> HttpResponse {
+
+    // println!("model: {:?}", &item);
+    // TODO
+    unimplemented!();
+
+    // HttpResponse::Ok().json(item.input.clone()) // <- send response
 }
 
 
@@ -54,10 +58,14 @@ async fn main() -> std::io::Result<()> {
     // let predict_endpoint = config.api.predict_endpoint;
     // let base_endpoint = config.api.base_endpoint;
     let input_dims = config.model.input_dims;
-    // let output_dims = config.model.output_dims;
+    let output_dims = config.model.output_dims;
 
     std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
+
+
+    dbg!("input_dims: ", &input_dims);
+    dbg!("output_dims: ", &output_dims);
 
     println!("Loading model and preparing runtime... ");
 
@@ -82,7 +90,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
         .data(web::JsonConfig::default().limit(4096)) // <- limit size of the payload (global configuration)
         .service(status)
-        // .service(web::resource("/predict2").route(web::post().to(index)))
+        .service(web::resource("/train").route(web::post().to(handler_train)))
         .service(
             web::resource("/predict").to(move |payload: web::Json<Payload>, req: HttpRequest |
                 match *req.method() {
@@ -102,40 +110,37 @@ async fn main() -> std::io::Result<()> {
     .bind(format!("{}:{}", host, port))?
     .run()
     .await
-
 }
 
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use actix_web::dev::Service;
-    use actix_web::{http, test, web, App};
-
-    async fn test_index() -> Result<(), Error> {
-        let mut app = test::init_service(
-            App::new().service(web::resource("/").route(web::post().to(index))),
-        )
-        .await;
-
-        let req = test::TestRequest::post()
-            .uri("/")
-            .set_json(&Payload {
-                input: vec![43.0,1.0,2.0,3.0],
-            })
-            .to_request();
-        let resp = app.call(req).await.unwrap();
-
-        assert_eq!(resp.status(), http::StatusCode::OK);
-
-        let response_body = match resp.response().body().as_ref() {
-            Some(actix_web::body::Body::Bytes(bytes)) => bytes,
-            _ => panic!("Response error"),
-        };
-
-        assert_eq!(response_body, r##"{"name":"my-name","number":43}"##);
-
-        Ok(())
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use actix_web::dev::Service;
+//     use actix_web::{http, test, web, App};
+//
+//     async fn test_index() -> Result<(), Error> {
+//         let mut app = test::init_service(
+//             App::new().service(web::resource("/").route(web::post().to(index))),
+//         )
+//         .await;
+//
+//         let req = test::TestRequest::post()
+//             .uri("/")
+//             .set_json(&Payload {
+//                 input: vec![43.0,1.0,2.0,3.0],
+//             })
+//             .to_request();
+//         let resp = app.call(req).await.unwrap();
+//
+//         assert_eq!(resp.status(), http::StatusCode::OK);
+//
+//         let response_body = match resp.response().body().as_ref() {
+//             Some(actix_web::body::Body::Bytes(bytes)) => bytes,
+//             _ => panic!("Response error"),
+//         };
+//
+//         assert_eq!(response_body, r##"{"name":"my-name","number":43}"##);
+//
+//         Ok(())
+//     }
+// }
