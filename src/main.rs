@@ -6,61 +6,17 @@ mod configuration;
 //     GraphOptimizationLevel,
 //     LoggingLevel, session
 //   };
-use ndarray::{Array, Array1} ;
 
+use ndarray::{Array, Array1} ;
 use std::*;
 use std::sync::Arc;
 use actix_web::http::{header, Method, StatusCode};
 use actix_web::{get, post, web, middleware, App, HttpServer, Responder, HttpResponse, HttpRequest, error, Error, Result};
 use serde::{Deserialize, Serialize};
 use json::JsonValue;
-// use ndarray::{Array, ArrayBase, Array1} ;
 use crate::model::onnx::OnnxSession;
 use crate::routes::{status, predict};
 use crate::configuration::get_configuration_from_file;
-
-
-
-// #[get("/status")]
-// async fn index() -> impl Responder {
-//     format!("Status ok!")
-// }
-//
-// /// This handler manually load request payload and parse json object
-// async fn index_manual(mut payload: web::Payload) -> Result<HttpResponse, Error> {
-//     // payload is a stream of Bytes objects
-//     let mut body = web::BytesMut::new();
-//
-//     // while let Some(chunk) = payload.next().await {
-//     //     let chunk = chunk?;
-//     //     // limit max size of in-memory payload
-//     //     if (body.len() + chunk.len()) > MAX_SIZE {
-//     //         return Err(error::ErrorBadRequest("overflow"));
-//     //     }
-//     //     body.extend_from_slice(&chunk);
-//     // }
-//
-//     // body is loaded, now we can deserialize serde-json
-//     let obj = serde_json::from_slice::<MyObj>(&body)?;
-//     Ok(HttpResponse::Ok().json(obj)) // <- send response
-// }
-
-// pub async fn predict_helper(payload: web::Bytes) -> Result<HttpResponse, Error> {
-//     // payload is a stream of Bytes objects
-//     // let mut body = web::BytesMut::new();
-//     let body = std::str::from_utf8(&payload).unwrap();
-//     // println!("payload: {:?}", body);
-//     let obj = serde_json::from_slice::<Payload>(body.as_bytes())?;
-//     // println!("obj: {:?}", obj.input);
-//     let input_vector: Vec<f64> = obj.input
-//     .split(",")
-//     .map(|s| s.parse().expect("parse error"))
-//     .collect();
-//     println!("input_vector: {:?}", input_vector);
-//     // TODO deserialize body into a vector of floats
-//     // body is loaded, now we can deserialize serde-json
-//     Ok(HttpResponse::Ok().json(obj)) // <- send response
-// }
 
 
 enum SessionType {
@@ -80,41 +36,6 @@ struct Payload {
     input: Vec<f32>,
 }
 
-// #[derive(Debug)]
-// struct AppState {
-//     foo: String,
-//     onnx_session: Arc<OnnxSession>,
-// }
-
-/// extract `Info` using serde
-// async fn index(info: web::Json<Info>) -> Result<String> {
-//     dbg!("Payload input ", &info.input);
-//     Ok(format!("Payload input {:?}!", info.input))
-// }
-
-/// This handler uses json extractor
-// async fn predict_handler(state: web::Data<AppState>, body: web::Bytes) -> Result<HttpResponse, Error> {
-//     // dbg!("payload: {:?}", &item);
-//     // HttpResponse::Ok().json(item.input.clone()) // <- send response
-//     // body is loaded, now we can deserialize json-rust
-//     let result = json::parse(std::str::from_utf8(&body).unwrap()); // return Result
-//         let injson: JsonValue = match result {
-//             Ok(v) => {
-//                 dbg!("state: {:?} ", &state);
-//                 dbg!("body: {:?} ", &v);
-//                 v
-//             },
-//             Err(e) => json::object! {"err" => e.to_string() },
-//         };
-//         Ok(HttpResponse::Ok()
-//             .content_type("application/json")
-//             .body(injson.dump()))
-// }
-// async fn extract_item(req: HttpRequest) -> HttpResponse {
-//     dbg!("request: {:?}", req);
-//     // println!("model: {:?}", item);
-//     HttpResponse::Found().finish()
-// }
 
 /// This handler uses json extractor
 async fn index(item: web::Json<Payload>) -> HttpResponse {
