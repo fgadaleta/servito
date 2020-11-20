@@ -70,7 +70,7 @@ impl OnnxSession  {
     //     // true
     // }
 
-    pub fn run(&self) -> Result<Vec<f32>, Error> {
+    pub fn run(&self, sample: Vec<f32>) -> Result<Vec<f32>, Error> {
         // tracing::subscriber::set_global_default(self.subscriber).expect("setting default subscriber failed");
         let mut session = self.environment
             .new_session_builder()?
@@ -115,15 +115,21 @@ impl OnnxSession  {
             }
             dbg!("total input dims: {}", n);
 
-            let array = Array::linspace(0.0_f32, 1.0, n as usize)
-            .into_shape(input_shape)
-            .unwrap();
-            // println!("input array: {:?}", array);
+            let sample = Array::from(sample)
+                        .into_shape(input_shape)
+                        .unwrap();
+            let sample = vec![sample];
+            let predictions: Vec<OrtOwnedTensor<f32, _>> = session.run(sample).unwrap();
 
-            let input_tensor_values = vec![array];
+            // let array = Array::linspace(0.0_f32, 1.0, n as usize)
+            // .into_shape(input_shape)
+            // .unwrap();
+            // println!("input array: {:?}", array);
+            // let input_tensor_values = vec![array];
+
             // println!("input_tensor_values: {:?}", input_tensor_values);
 
-            let predictions: Vec<OrtOwnedTensor<f32, _>> = session.run(input_tensor_values).unwrap();
+            // let predictions: Vec<OrtOwnedTensor<f32, _>> = session.run(input_tensor_values).unwrap();
             // println!("predictions: {:?} len: {}", predictions, predictions.len());
 
             let mut preds: Vec<f32> = vec![];
