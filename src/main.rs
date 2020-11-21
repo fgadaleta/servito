@@ -15,20 +15,68 @@ use actix_web::{get, post, web, middleware, App, HttpServer, Responder, HttpResp
 use serde::{Deserialize, Serialize};
 use json::JsonValue;
 use crate::model::onnx::OnnxSession;
+use crate::model::torch::TorchSession;
 use crate::routes::{status, predict};
 use crate::configuration::get_configuration_from_file;
 
+type SessionError = Box<dyn std::error::Error>;
 
+
+#[derive(Debug, Clone)]
 enum SessionType {
     ONNX,
     TORCH,
     // TODO
 }
 
+#[derive(Debug)]
 struct RuntimeSession<T> {
     session: Arc<T>,
     session_type: SessionType
 }
+
+#[derive(Debug, Clone)]
+enum RuntimeSession2 {
+    ONNX { session: Arc<OnnxSession> },
+    TORCH { session: Arc<TorchSession> }
+}
+
+
+impl RuntimeSession2 {
+    fn run(&self, sample: Vec<f32>) -> Result<Vec<f32>, SessionError> {
+    match self {
+        Self::ONNX { session } => session.run(sample),
+        // Self::TORCH { session } => session.run(sample),
+        _ => unimplemented!()
+        }
+    }
+}
+
+
+impl<T> RuntimeSession<T> {
+    fn new(session: Arc<T>, session_type: SessionType) -> Self {
+
+        RuntimeSession{
+            session,
+            session_type
+        }
+    }
+}
+
+
+
+
+
+impl<T> Clone for RuntimeSession<T> {
+    fn clone(&self) -> Self {
+        Self{
+            session: self.session.clone(),
+            session_type: self.session_type.clone()
+        }
+    }
+}
+
+// impl<T> Copy for RuntimeSession<T> { }
 
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -71,21 +119,21 @@ async fn main() -> std::io::Result<()> {
 
     // TODO
     // check model_format is "onnx"
+    // let session_type = match model_format {
 
-    // let runtime_session = Arc::new(RuntimeSession);
-
-    if model_format == "onnx" {
-
-    }
-
-        // TODO encapsulate into a RuntimeSession struct with type (Arc:new(..))
-    let onnx_session = Arc::new(OnnxSession::new(model_path.clone()).unwrap());
     // }
+    // if model_format == "onnx" {
+
+    // }
+
+    let onnx_session = Arc::new(OnnxSession::new(model_path.clone()).unwrap());
+    let runtime_session = RuntimeSession::new(onnx_session.clone(), SessionType::ONNX);
 
     println!("Launching web server");
 
     HttpServer::new(move | | {
         let onnx_session = onnx_session.clone();
+        let runtime_session = runtime_session.clone();
 
         App::new()
         .data(web::JsonConfig::default().limit(4096)) // <- limit size of the payload (global configuration)
@@ -98,6 +146,8 @@ async fn main() -> std::io::Result<()> {
                     Method::GET => HttpResponse::MethodNotAllowed().finish(),
 
                     Method::POST => {
+                        // let session = runtime_session.session_type;
+                        let preds = runtime_session.session.run(payload.input.clone());
                         let preds = onnx_session.run(payload.input.clone());
                         // dbg!("payload input: ", &payload.input);
                         // dbg!("preds: {:?}", &preds);
