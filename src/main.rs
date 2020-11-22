@@ -52,7 +52,6 @@ impl RuntimeSession2 {
     }
 }
 
-
 impl<T> RuntimeSession<T> {
     fn new(session: Arc<T>, session_type: SessionType) -> Self {
 
@@ -64,9 +63,6 @@ impl<T> RuntimeSession<T> {
 }
 
 
-
-
-
 impl<T> Clone for RuntimeSession<T> {
     fn clone(&self) -> Self {
         Self{
@@ -75,9 +71,6 @@ impl<T> Clone for RuntimeSession<T> {
         }
     }
 }
-
-// impl<T> Copy for RuntimeSession<T> { }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Payload {
@@ -132,7 +125,7 @@ async fn main() -> std::io::Result<()> {
     println!("Launching web server");
 
     HttpServer::new(move | | {
-        let onnx_session = onnx_session.clone();
+        // let onnx_session = onnx_session.clone();
         let runtime_session = runtime_session.clone();
 
         App::new()
@@ -148,7 +141,7 @@ async fn main() -> std::io::Result<()> {
                     Method::POST => {
                         // let session = runtime_session.session_type;
                         let preds = runtime_session.session.run(payload.input.clone());
-                        let preds = onnx_session.run(payload.input.clone());
+                        // let preds = onnx_session.run(payload.input.clone());
                         // dbg!("payload input: ", &payload.input);
                         // dbg!("preds: {:?}", &preds);
                         HttpResponse::Ok().json(preds.unwrap())
