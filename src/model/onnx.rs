@@ -3,17 +3,24 @@ use onnxruntime::{environment::Environment,
     GraphOptimizationLevel,
     LoggingLevel
   };
-// use tract_onnx::prelude::*;
+use onnxruntime::session::Session;
 use tracing_subscriber::FmtSubscriber;
 use tracing::Level;
-use ndarray::{Array, Array1} ;
-// use std::fmt;
+use ndarray::Array;
+use std::sync::Arc;
+use std::sync::Mutex;
+
+// tract crate
+// use tract_ndarray::Array;
+use tract_onnx::prelude::*;
+
 type Error = Box<dyn std::error::Error>;
 
 #[derive(Debug)]
 pub struct OnnxSession {
     pub model_filepath: String,
     pub environment: Environment,
+    // pub session: Arc<Mutex<Session>>
     // pub input_shape: Vec<usize>,
     // pub output_shape: Vec<usize>
 }
@@ -32,13 +39,19 @@ impl OnnxSession  {
         .with_log_level(LoggingLevel::Info)
         .build()?;
 
+        // let mut session = environment
+        //     .new_session_builder()?
+        //     .with_optimization_level(GraphOptimizationLevel::Basic)?
+        //     .with_number_threads(1)?
+        //     .with_model_from_file(model_filepath.clone())?;
+
         tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
         Ok(
             OnnxSession {
                 model_filepath: model_filepath.to_owned(),
-                environment
-                // session,
+                environment,
+                // session: Arc::new(Mutex::new(session)),
                 // input_shape,
                 // output_shape
             }
@@ -72,11 +85,14 @@ impl OnnxSession  {
 
     pub fn run(&self, sample: Vec<f32>) -> Result<Vec<f32>, Error> {
         // tracing::subscriber::set_global_default(self.subscriber).expect("setting default subscriber failed");
+
         let mut session = self.environment
             .new_session_builder()?
             .with_optimization_level(GraphOptimizationLevel::Basic)?
             .with_number_threads(1)?
             .with_model_from_file(self.model_filepath.clone())?;
+
+        // let mut session = self.session.lock().unwrap();
 
             let mut input_shape: Vec<usize> = session.inputs[0]
                 .dimensions()
@@ -115,28 +131,17 @@ impl OnnxSession  {
             }
             dbg!("total input dims: {}", n);
 
+            // Prepare sample and infer into runtime session
             let sample = Array::from(sample)
                         .into_shape(input_shape)
                         .unwrap();
             let sample = vec![sample];
             let predictions: Vec<OrtOwnedTensor<f32, _>> = session.run(sample).unwrap();
 
-            // let array = Array::linspace(0.0_f32, 1.0, n as usize)
-            // .into_shape(input_shape)
-            // .unwrap();
-            // println!("input array: {:?}", array);
-            // let input_tensor_values = vec![array];
-
-            // println!("input_tensor_values: {:?}", input_tensor_values);
-
-            // let predictions: Vec<OrtOwnedTensor<f32, _>> = session.run(input_tensor_values).unwrap();
-            // println!("predictions: {:?} len: {}", predictions, predictions.len());
-
+            // Format predictions and return
             let mut preds: Vec<f32> = vec![];
             for tensor in  predictions {
-                // println!("tensor len: {}", tensor.len());
                 for pred in tensor.iter() {
-                    // println!("element: {}", pred);
                     preds.push(*pred);
                 }
             }

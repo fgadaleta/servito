@@ -9,11 +9,15 @@ mod configuration;
 
 use ndarray::{Array, Array1} ;
 use std::*;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use actix_web::http::{header, Method, StatusCode};
 use actix_web::{get, post, web, middleware, App, HttpServer, Responder, HttpResponse, HttpRequest, error, Error, Result};
 use serde::{Deserialize, Serialize};
 use json::JsonValue;
+
+// use tract_ndarray::Array;
+use tract_onnx::prelude::*;
+
 use crate::model::onnx::OnnxSession;
 use crate::model::torch::TorchSession;
 use crate::routes::{status, predict};
@@ -41,7 +45,6 @@ enum RuntimeSession2 {
     TORCH { session: Arc<TorchSession> }
 }
 
-
 impl RuntimeSession2 {
     fn run(&self, sample: Vec<f32>) -> Result<Vec<f32>, SessionError> {
     match self {
@@ -61,7 +64,6 @@ impl<T> RuntimeSession<T> {
         }
     }
 }
-
 
 impl<T> Clone for RuntimeSession<T> {
     fn clone(&self) -> Self {
@@ -116,17 +118,33 @@ async fn main() -> std::io::Result<()> {
 
     // }
     // if model_format == "onnx" {
-
     // }
 
+    // use onnx runtime
     let onnx_session = Arc::new(OnnxSession::new(model_path.clone()).unwrap());
-    let runtime_session = RuntimeSession::new(onnx_session.clone(), SessionType::ONNX);
+
+    // use tract runtime
+    let tract_runtime = tract_onnx::onnx()
+        .model_for_path(model_path.clone()).unwrap()
+        .with_input_fact(0, InferenceFact::dt_shape(f32::datum_type(), tvec!(1, 1, 34))).unwrap()
+        .into_optimized().unwrap()
+        .into_runnable().unwrap();
+
+
+    // use torch runtime
+    let torchscript_path = "/Users/frag/Documents/projects/amethix-ncode/servito/python/test.pt";
+    // let torch_session = Arc::new(TorchSession::new(&model_path[..]));
+    let torch_session = Arc::new(TorchSession::new(torchscript_path));
+    // let model = tch::CModule::load(torchscript_path).unwrap();
+
+    // let runtime_session = RuntimeSession::new(onnx_session.clone(), SessionType::ONNX);
 
     println!("Launching web server");
 
     HttpServer::new(move | | {
-        // let onnx_session = onnx_session.clone();
-        let runtime_session = runtime_session.clone();
+        let onnx_session = onnx_session.clone();  // cloning a ref
+        // let runtime_session = runtime_session.clone();
+        let torch_session = torch_session.clone();
 
         App::new()
         .data(web::JsonConfig::default().limit(4096)) // <- limit size of the payload (global configuration)
@@ -140,8 +158,16 @@ async fn main() -> std::io::Result<()> {
 
                     Method::POST => {
                         // let session = runtime_session.session_type;
-                        let preds = runtime_session.session.run(payload.input.clone());
-                        // let preds = onnx_session.run(payload.input.clone());
+                        // let preds = runtime_session.session.run(payload.input.clone());
+                        let sample = payload.input.clone();
+                        let preds = onnx_session.run(sample.clone());
+
+                        // run sample through tract runtime
+                        // let image: Tensor = Array::from_shape_fn((1, 1, 34).into();
+
+                        // let result = tract_runtime.run(tvec!(sample)).unwrap();
+
+                        // let torch_preds = torch_session.run(sample);
                         // dbg!("payload input: ", &payload.input);
                         // dbg!("preds: {:?}", &preds);
                         HttpResponse::Ok().json(preds.unwrap())
