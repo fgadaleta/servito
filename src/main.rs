@@ -134,17 +134,17 @@ async fn main() -> std::io::Result<()> {
     // use torch runtime
     let torchscript_path = "/Users/frag/Documents/projects/amethix-ncode/servito/python/test.pt";
     // let torch_session = Arc::new(TorchSession::new(&model_path[..]));
-    let torch_session = Arc::new(TorchSession::new(torchscript_path));
-    // let model = tch::CModule::load(torchscript_path).unwrap();
+    // let torch_session = TorchSession::new(torchscript_path);
 
+    // let model = tch::CModule::load(torchscript_path).unwrap();
     // let runtime_session = RuntimeSession::new(onnx_session.clone(), SessionType::ONNX);
 
     println!("Launching web server");
 
-    HttpServer::new(move | | {
+    HttpServer::new(move || {
         let onnx_session = onnx_session.clone();  // cloning a ref
         // let runtime_session = runtime_session.clone();
-        let torch_session = torch_session.clone();
+        // let torch_session = torch_session.clone();
 
         App::new()
         .data(web::JsonConfig::default().limit(4096)) // <- limit size of the payload (global configuration)
@@ -164,12 +164,12 @@ async fn main() -> std::io::Result<()> {
 
                         // run sample through tract runtime
                         // let image: Tensor = Array::from_shape_fn((1, 1, 34).into();
-
                         // let result = tract_runtime.run(tvec!(sample)).unwrap();
 
-                        // let torch_preds = torch_session.run(sample);
+                        // let preds = torch_session.run(sample);
+
                         // dbg!("payload input: ", &payload.input);
-                        // dbg!("preds: {:?}", &preds);
+                        dbg!("preds: {:?}", &preds);
                         HttpResponse::Ok().json(preds.unwrap())
                     },
                     _ => HttpResponse::NotFound().finish(),
