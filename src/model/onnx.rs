@@ -20,7 +20,7 @@ type Error = Box<dyn std::error::Error>;
 pub struct OnnxSession {
     pub model_filepath: String,
     pub environment: Environment,
-    // pub session: Arc<Mutex<Session>>
+    // pub session: Arc<Session>
     // pub input_shape: Vec<usize>,
     // pub output_shape: Vec<usize>
 }
@@ -39,11 +39,11 @@ impl OnnxSession  {
         .with_log_level(LoggingLevel::Info)
         .build()?;
 
-        // let mut session = environment
-        //     .new_session_builder()?
-        //     .with_optimization_level(GraphOptimizationLevel::Basic)?
-        //     .with_number_threads(1)?
-        //     .with_model_from_file(model_filepath.clone())?;
+        let mut session = environment
+            .new_session_builder()?
+            .with_optimization_level(GraphOptimizationLevel::Basic)?
+            .with_number_threads(1)?
+            .with_model_from_file(model_filepath.clone())?;
 
         tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
@@ -51,7 +51,7 @@ impl OnnxSession  {
             OnnxSession {
                 model_filepath: model_filepath.to_owned(),
                 environment,
-                // session: Arc::new(Mutex::new(session)),
+                // session: Arc::new(session),
                 // input_shape,
                 // output_shape
             }
@@ -92,6 +92,7 @@ impl OnnxSession  {
             .with_number_threads(1)?
             .with_model_from_file(self.model_filepath.clone())?;
 
+            // let session = self.session.clone();
         // let mut session = self.session.lock().unwrap();
 
             let mut input_shape: Vec<usize> = session.inputs[0]

@@ -1,12 +1,6 @@
 mod model;
 mod routes;
 mod configuration;
-// use onnxruntime::{environment::Environment,
-//     tensor::OrtOwnedTensor,
-//     GraphOptimizationLevel,
-//     LoggingLevel, session
-//   };
-
 use ndarray::{Array, Array1} ;
 use std::*;
 use std::sync::{Arc, Mutex};
@@ -105,7 +99,6 @@ async fn main() -> std::io::Result<()> {
 
     std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
-
 
     dbg!("input_dims: ", &input_dims);
     dbg!("output_dims: ", &output_dims);
