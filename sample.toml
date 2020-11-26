@@ -1,5 +1,5 @@
 [model]
-path = "./simple_model.onnx"
+path = "python/simple_model.onnx"
 format = "onnx"
 input_dims = [1,34]
 output_dims = [1,10]
