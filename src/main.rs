@@ -2,7 +2,7 @@ mod configuration;
 mod model;
 mod routes;
 use actix_web::http::Method;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Result};
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::*;
