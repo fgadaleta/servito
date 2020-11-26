@@ -17,16 +17,13 @@ pub struct TorchSession {
 //     }
 // }
 
-
-impl TorchSession  {
+impl TorchSession {
     /// Load torchscript from file and prepare torch runtime
     pub fn new(model_file: &str) -> Self {
         let environment = Arc::new(tch::CModule::load(model_file).unwrap());
         // let environment = tch::CModule::load(model_file).unwrap();
 
-        TorchSession {
-            environment
-        }
+        TorchSession { environment }
     }
 
     pub fn run(&self, sample: Vec<f32>) -> Result<Vec<f32>, Error> {
@@ -57,14 +54,11 @@ impl TorchSession  {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
 
     #[test]
     fn it_works() {
-
         assert_eq!(2 + 2, 4);
     }
 }
