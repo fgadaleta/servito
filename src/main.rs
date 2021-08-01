@@ -1,136 +1,116 @@
-use tract_onnx::prelude::*;
-use onnxruntime::{environment::Environment,
-                tensor::OrtOwnedTensor,
-                GraphOptimizationLevel,
-                LoggingLevel,
-                 };
-use ndarray::Array;
-use tracing::Level;
+mod configuration;
+mod model;
+mod routes;
+use actix_web::http::Method;
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::*;
-use tracing_subscriber::FmtSubscriber;
 
-type Error = Box<dyn std::error::Error>;
+// use tract_onnx::prelude::*;
+use crate::configuration::get_configuration_from_file;
+use crate::model::onnx::OnnxSession;
+use crate::routes::status;
+
+type SessionError = Box<dyn std::error::Error>;
 
 
-fn load_model() -> TractResult<()> {
-    let model_filename = "simple_model.onnx";
-
-    let model = tract_onnx::onnx()
-    // load the model
-    .model_for_path(model_filename)?
-    // specify input type and shape
-    .with_input_fact(0, InferenceFact::dt_shape(f32::datum_type(), tvec!(1, 3, 224, 224)))?
-    // optimize the model
-    .into_optimized()?
-    // make the model runnable and fix its inputs and outputs
-    .into_runnable()?;
-    // let some = model.parse();
-
-    Ok(())
+#[derive(Debug, Serialize, Deserialize)]
+struct Payload {
+    input: Vec<f32>,
 }
 
-
-fn run() -> Result<(), Error> {
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::TRACE)
-        .finish();
-
-    let environment = Environment::builder()
-    .with_name("test_environment")
-    // The ONNX Runtime's log level can be different than the one of the wrapper crate or the application.
-    .with_log_level(LoggingLevel::Info)
-    .build()?;
-
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
-
-    let mut session = environment
-        .new_session_builder()?
-        .with_optimization_level(GraphOptimizationLevel::Basic)?
-        .with_number_threads(1)?
-        .with_model_from_file("simple_model.onnx")?;
-
-        dbg!(&session);
-        // let inputs = &session.inputs;
-        // let outputs = &session.outputs;
-        //
-        // for input in inputs {
-        //     // dbg!(&input);
-        //     let in_dim: Vec<Option<usize>> = input.dimensions().map(|d| d).collect();
-        //     println!("input_dims: {:?}", in_dim);
-        // }
-        //
-        // for output in outputs {
-        //     // dbg!(&output);
-        //     let out_dim: Vec<Option<usize>> = output
-        //     .dimensions()
-        //     .map(|d| d)
-        //     .collect();
-        //     println!("output_dims: {:?}", out_dim);
-        // }
-
-        let mut input0_shape: Vec<usize> = session.inputs[0]
-            .dimensions()
-            .map(|d| {
-                let curdim = match d {
-                    Some(dim) => dim,
-                    None => 1
-                };
-                curdim
-            })
-            .collect();
-
-        println!("input_0: {:?}", input0_shape);
-
-        let mut output0_shape: Vec<usize> = session.outputs[0]
-            .dimensions()
-            .map(|d| {
-                let curdim = match d {
-                    Some(dim) => dim,
-                    None => 1
-                };
-                curdim
-                // d.unwrap()
-            })
-            .collect();
-        println!("output_0: {:?}", output0_shape);
-
-        // TODO if dimensions present in toml config, assert it matches
-        // assert_eq!(input0_shape, [1, 3, 224, 224]);
-        // assert_eq!(output0_shape, [1, 1000, 1, 1]);
-
-        // total input dimensions
-        let mut n = 1;
-        for el in input0_shape.iter_mut() {
-            n *= *el;
-        }
-        dbg!("total input dims: {}", n);
-
-        let array = Array::linspace(0.0_f32, 1.0, n as usize)
-        .into_shape(input0_shape)
-        .unwrap();
-        // println!("input array: {:?}", array);
-
-        let input_tensor_values = vec![array];
-        println!("input_tensor_values: {:?}", input_tensor_values);
-
-        let predictions: Vec<OrtOwnedTensor<f32, _>> = session.run(input_tensor_values).unwrap();
-        println!("predictions: {:?}", predictions);
-
-        // let outputs: Vec<OrtOwnedTensor<f32, _>> = session.run(input_tensor_values)?;
-        // dbg!("output: {} len: {}", &outputs, &outputs.len());
-        // println!("{:?}", outputs);
-
-    Ok(())
+/// This handler uses json extractor
+///
+async fn handler_train(item: web::Json<Payload>) -> HttpResponse {
+    unimplemented!();
+    // HttpResponse::Ok().json(item.input.clone()) // <- send response
 }
 
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    let config = get_configuration_from_file("sample.toml").unwrap();
+    // let model_format = config.model.format;
+    let model_path = config.model.path;
+    let host = config.api.host;
+    let port = config.api.port;
+    // let predict_endpoint = config.api.predict_endpoint;
+    // let base_endpoint = config.api.base_endpoint;
+    let input_dims = config.model.input_dims;
+    let output_dims = config.model.output_dims;
 
-fn main() {
+    std::env::set_var("RUST_LOG", "actix_web=info");
+    env_logger::init();
+
+    dbg!("input_dims: ", &input_dims);
+    dbg!("output_dims: ", &output_dims);
+
     println!("Loading model and preparing runtime... ");
 
-    if let Err(e) = run() {
-        println!("Encountered an error {}. Exiting...", e);
-        std::process::exit(1);
-    }
+    // use onnx runtime
+    let onnx_session = Arc::new(OnnxSession::new(model_path.clone()).unwrap());
 
-    println!("Goodbye!")
+    println!("Launching web server");
+
+    HttpServer::new(move || {
+        let onnx_session = onnx_session.clone(); // cloning a ref
+                                                 // let runtime_session = runtime_session.clone();
+                                                 // let torch_session = torch_session.clone();
+
+        App::new()
+            .data(web::JsonConfig::default().limit(4096)) // <- limit size of the payload (global configuration)
+            .service(status)
+            .service(web::resource("/train").route(web::post().to(handler_train)))
+            .service(web::resource("/predict").to(
+                move |payload: web::Json<Payload>, req: HttpRequest| match *req.method() {
+
+                    Method::GET => HttpResponse::MethodNotAllowed().finish(),
+
+                    Method::POST => {
+                        let sample = payload.input.clone();
+                        let preds = onnx_session.run(sample.clone());
+                        dbg!("preds: {:?}", &preds);
+                        HttpResponse::Ok().json(preds.unwrap())
+                    }
+                    _ => HttpResponse::NotFound().finish(),
+                },
+            ))
+    })
+    .bind(format!("{}:{}", host, port))?
+    .run()
+    .await
 }
+
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use actix_web::dev::Service;
+//     use actix_web::{http, test, web, App};
+//
+//     async fn test_index() -> Result<(), Error> {
+//         let mut app = test::init_service(
+//             App::new().service(web::resource("/").route(web::post().to(index))),
+//         )
+//         .await;
+//
+//         let req = test::TestRequest::post()
+//             .uri("/")
+//             .set_json(&Payload {
+//                 input: vec![43.0,1.0,2.0,3.0],
+//             })
+//             .to_request();
+//         let resp = app.call(req).await.unwrap();
+//
+//         assert_eq!(resp.status(), http::StatusCode::OK);
+//
+//         let response_body = match resp.response().body().as_ref() {
+//             Some(actix_web::body::Body::Bytes(bytes)) => bytes,
+//             _ => panic!("Response error"),
+//         };
+//
+//         assert_eq!(response_body, r##"{"name":"my-name","number":43}"##);
+//
+//         Ok(())
+//     }
+// }

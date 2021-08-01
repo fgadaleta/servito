@@ -157,7 +157,7 @@ row = [1,0,0.99539,-0.05889,0.85243,0.02306,0.83398,-0.37708,1,0.03760,0.85243,-
 yhat = predict(row, model)
 print('Predicted: %.3f (class=%d)' % (yhat, yhat.round()))
 
-
+# put model into eval mode (not training)
 model.eval()
 batch_size = 10
 # Input to the model
@@ -165,9 +165,9 @@ x = torch.randn(batch_size, 1, 34, requires_grad=True)
 torch_out = model(x)
 
 # Export the model
-torch.onnx.export(model,               # model being run
+torch.onnx.export(model,                     # model being run
                   x,                         # model input (or a tuple for multiple inputs)
-                  "simple_model.onnx",   # where to save the model (can be a file or file-like object)
+                  "simple_model.onnx",       # where to save the model (can be a file or file-like object)
                   export_params=True,        # store the trained parameter weights inside the model file
                   opset_version=10,          # the ONNX version to export the model to
                   do_constant_folding=True,  # whether to execute constant folding for optimization

@@ -1,12 +1,21 @@
 [model]
-path = "./super_resolution.onnx"
-type = "onnx"
-input_dims = "1,224,224"
-output_dims = "1,672,672"
+path = "python/simple_model.onnx"
+format = "onnx"
+input_dims = [1,34]
+output_dims = [1,10]
+
+[data]
+input_type = ""
+output_type = ""
 
 [api]
 host = "localhost"
-port = "6666"
-serving_endpoint = "/model/"
+port = 6666
+base_endpoint = "/model/"
 predict_endpoint = "/predict"
 train_endpoint = "/train"
+test_endpoint = "/test"
+
+[settings]
+something = ""
+something_else = ""
